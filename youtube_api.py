@@ -10,7 +10,6 @@ class YouTubeAPI:
     def __init__(self):
         self.credentials = None
         self.youtube = None
-        self.channel_id = Config.YOUTUBE_CHANNEL_ID
         
         # OAuth 2.0のスコープ（Brand Account対応のため追加）
         self.SCOPES = [
@@ -119,8 +118,6 @@ class YouTubeAPI:
             video_id = response['id']
             print(f"アップロード完了: {video_id}")
             
-
-            
             return video_id
             
         except Exception as e:
@@ -136,19 +133,6 @@ class YouTubeAPI:
                     return self.upload_video(file_path, title, description, tags, category_id)
             
             return None
-            if actual_channel_id == self.channel_id:
-                print(f"✓ 正しいチャンネルにアップロードされました: {self.channel_id}")
-                return True
-            else:
-                print(f"⚠️  警告: 動画が異なるチャネルにアップロードされました")
-                print(f"   期待されるチャネル: {self.channel_id}")
-                print(f"   実際のチャネル: {actual_channel_id}")
-                print(f"   動画URL: https://www.youtube.com/watch?v={video_id}")
-                return False
-                
-        except Exception as e:
-            print(f"チャネル所有権確認エラー: {str(e)}")
-            return False
     
     def update_video_privacy(self, video_id, privacy_status='public'):
         """動画のプライバシー設定を更新"""

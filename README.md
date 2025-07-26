@@ -4,14 +4,15 @@ Twitch APIを使用して前日分の配信アーカイブを自動的にYouTube
 
 ## 機能
 
-- Twitch APIを使用した配信アーカイブの自動取得
-- YouTube APIを使用した動画の自動アップロード
-- 日本時間（JST）での前日分動画の自動取得
-- スケジュール実行（毎日指定時刻に自動実行）
-- 手動実行（指定した日数前の動画をアップロード）
-- 動画長の制限機能（YouTubeの12時間制限を超える動画はスキップ）
-- 古いファイルの自動クリーンアップ
-- 動画説明にTwitchチャンネルURLを自動追加
+- **自動配信アーカイブ取得**: Twitch APIを使用して前日の配信アーカイブを自動取得
+- **日本時間対応**: 日本標準時（JST）に基づいて前日の動画を判定
+- **動画長制限**: YouTubeの制限（12時間）を超える動画は自動スキップ
+- **重複ダウンロード防止**: 既にダウンロード済みの動画は再ダウンロードしない
+- **自動アップロード**: YouTube Data API v3を使用して自動アップロード
+- **トークン自動更新**: YouTube APIのトークンは自動的に更新される
+- **ログ出力**: 詳細な処理ログを出力
+- **設定確認ツール**: `check_config.sh`でAPI設定を確認可能
+- **作者名タグ**: 設定した作者名を動画タグに自動追加
 
 ## 必要な環境
 
@@ -27,7 +28,14 @@ Twitch APIを使用して前日分の配信アーカイブを自動的にYouTube
 pip install -r requirements.txt
 ```
 
+### 2. 仮想環境の作成（推奨）
 
+```bash
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# または
+venv\Scripts\activate     # Windows
+```
 
 ### 3. API設定
 
@@ -69,6 +77,9 @@ TWITCH_CLIENT_ID=your_twitch_client_id
 TWITCH_CLIENT_SECRET=your_twitch_client_secret
 TWITCH_CHANNEL_NAME=your_channel_name
 TWITCH_CHANNEL_URL=https://www.twitch.tv/your_channel_name
+
+# 作者設定
+AUTHOR_NAME=your_author_name
 
 # アップロード設定
 DOWNLOAD_DIR=./downloads
@@ -142,10 +153,9 @@ twitch-vods-to-youtube/
 | `TWITCH_CLIENT_SECRET` | Twitch API Client Secret | - |
 | `TWITCH_CHANNEL_NAME` | 対象チャンネル名 | - |
 | `TWITCH_CHANNEL_URL` | TwitchチャンネルURL（動画説明に含まれる） | `https://www.twitch.tv/{TWITCH_CHANNEL_NAME}` |
+| `AUTHOR_NAME` | 作者名（動画タグに含まれる） | - |
 | `DOWNLOAD_DIR` | ダウンロードディレクトリ | `./downloads` |
 | `MAX_VIDEO_LENGTH` | 最大動画長（秒） | `43200`（12時間） |
-
-
 
 ## YouTubeの制限について
 
@@ -160,18 +170,18 @@ twitch-vods-to-youtube/
 ### 推奨設定
 - 認証済みアカウントの場合: `MAX_VIDEO_LENGTH=43200`（12時間）
 - 未認証アカウントの場合: `MAX_VIDEO_LENGTH=900`（15分）
-- 動画分割が必要な場合: `ENABLE_VIDEO_SPLIT=true`
 
 ## 注意事項
 
 - 初回実行時にYouTube APIの認証が必要です
-- 認証時に複数のチャンネルがある場合は、正しいチャンネルを選択してください
+- 認証時に複数のチャンネルがある場合は、アップロード先のチャンネルを選択してください
 - 動画の長さが`MAX_VIDEO_LENGTH`を超える場合はスキップされます
 - アップロード成功後、ローカルファイルは自動的に削除されます
 - 古いファイルは7日後に自動的に削除されます
 - cronで実行する場合は、絶対パスを使用してください
 - 実行ログは`logs/`ディレクトリに保存されます
 - 同じファイル名の動画が既に存在する場合はダウンロードをスキップします
+- 設定した作者名が動画タグに自動的に追加されます
 
 ## APIキーの有効期限について
 
@@ -193,8 +203,6 @@ twitch-vods-to-youtube/
 
 ## トラブルシューティング
 
-
-
 ### Twitch API認証エラー
 1. `.env`ファイルにClient IDとClient Secretが正しく設定されているか確認
 2. Twitch Developer Consoleでアプリケーションが正しく設定されているか確認
@@ -213,7 +221,7 @@ twitch-vods-to-youtube/
 ### YouTube認証エラー
 1. `client_secret.json`ファイルが正しく配置されているか確認
 2. 初回実行時にブラウザで認証を完了する
-3. 複数のチャンネルがある場合は、正しいチャンネルを選択する
+3. 複数のチャンネルがある場合は、アップロード先のチャンネルを選択する
 4. 認証エラーが続く場合は、`token.pickle`を削除して再認証する
 
 ## ライセンス

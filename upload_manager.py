@@ -33,7 +33,7 @@ class UploadManager:
         print(f"前日（{yesterday_jst.strftime('%Y年%m月%d日')}）の配信アーカイブを取得中...")
         
         # 前日の動画を取得
-        videos = self.twitch_api.get_videos(days_back=3)
+        videos = self.twitch_api.get_videos(days_back=4)
         
         if not videos:
             print(f"前日（{yesterday_jst.strftime('%Y年%m月%d日')}）の配信アーカイブが見つかりませんでした。")
@@ -102,13 +102,19 @@ class UploadManager:
         """単一の動画をYouTubeにアップロード"""
         # TwitchチャンネルURLを含む説明文を作成
         twitch_url = Config.TWITCH_CHANNEL_URL
+        author_name = Config.AUTHOR_NAME
         description = f"Twitch配信アーカイブ\n\n配信日（JST）: {created_at_jst.strftime('%Y年%m月%d日')}\n\nTwitchチャンネル: {twitch_url}\n\n#Twitch #配信アーカイブ"
+        
+        # タグに作者名を追加
+        tags = ['Twitch', '配信アーカイブ', 'ライブ配信']
+        if author_name:
+            tags.append(author_name)
         
         video_id = self.youtube_api.upload_video(
             file_path=file_path,
             title=title,
             description=description,
-            tags=['Twitch', '配信アーカイブ', 'ライブ配信']
+            tags=tags
         )
         
         if video_id:
@@ -119,22 +125,6 @@ class UploadManager:
             print(f"ローカルファイルを削除: {file_path}")
         else:
             print("YouTubeアップロードに失敗しました。")
-    
-    def run_daily_upload(self):
-        """毎日のアップロード処理を実行"""
-        jst = pytz.timezone('Asia/Tokyo')
-        now_jst = datetime.now(jst)
-        yesterday_jst = now_jst - timedelta(days=1)
-        print(f"毎日のアップロード処理を開始: {now_jst.strftime('%Y年%m月%d日 %H:%M:%S')} (JST)")
-        print(f"対象日: {yesterday_jst.strftime('%Y年%m月%d日')} (JST)")
-        
-        # 古いファイルをクリーンアップ
-        self.downloader.cleanup_old_files()
-        
-        # 前日の動画を処理
-        self.process_yesterday_videos()
-        
-        print("毎日のアップロード処理が完了しました。")
     
     def run_manual_upload(self, days_back=1):
         """手動でアップロード処理を実行"""

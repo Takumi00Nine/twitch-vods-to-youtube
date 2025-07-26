@@ -16,16 +16,12 @@ class Config:
     TWITCH_CHANNEL_NAME = os.getenv('TWITCH_CHANNEL_NAME')
     TWITCH_CHANNEL_URL = os.getenv('TWITCH_CHANNEL_URL', f'https://www.twitch.tv/{os.getenv("TWITCH_CHANNEL_NAME", "")}')
     
-
+    # 作者設定
+    AUTHOR_NAME = os.getenv('AUTHOR_NAME')
     
     # アップロード設定
     DOWNLOAD_DIR = os.getenv('DOWNLOAD_DIR', './downloads')
     MAX_VIDEO_LENGTH = int(os.getenv('MAX_VIDEO_LENGTH', 43200))  # 最大動画長（秒）- 12時間
-    
-    # YouTube設定
-    YOUTUBE_CHANNEL_ID = os.getenv('YOUTUBE_CHANNEL_ID', 'UCanvJzs7uBoIGM68BgsZ0FA')  # アップロード先チャンネルID
-    
-
     
     @classmethod
     def validate_config(cls):

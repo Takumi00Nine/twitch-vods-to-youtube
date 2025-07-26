@@ -131,19 +131,18 @@ def check_youtube_config():
         # チャンネル情報取得テスト
         print("チャンネル情報取得中...")
         try:
-            # 設定されたチャンネルIDで情報を取得
+            # 認証されたアカウントのチャンネル情報を取得
             channels_response = youtube_api.youtube.channels().list(
                 part='snippet',
-                id=Config.YOUTUBE_CHANNEL_ID
+                mine=True
             ).execute()
             
             if channels_response['items']:
                 channel = channels_response['items'][0]
                 print(f"✅ チャンネル情報取得成功: {channel['snippet']['title']}")
                 print(f"チャンネルID: {channel['id']}")
-                print(f"設定されたチャンネルID: {Config.YOUTUBE_CHANNEL_ID}")
             else:
-                print(f"❌ チャンネル情報取得失敗: {Config.YOUTUBE_CHANNEL_ID}")
+                print("❌ チャンネル情報取得失敗")
                 return False
                 
         except Exception as e:
