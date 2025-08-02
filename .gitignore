@@ -138,7 +138,6 @@ celerybeat.pid
 .env
 .envrc
 .venv
-env/
 venv/
 ENV/
 env.bak/
@@ -211,6 +210,6 @@ downloads/
 *.mp4
 *.mkv
 *.avi
-token.pickle
-client_secret.json
-.env
+pickle/token.pickle
+config/client_secret.json
+env/.env

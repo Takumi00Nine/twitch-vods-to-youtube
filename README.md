@@ -17,8 +17,6 @@ Twitch APIを使用して前日分の配信アーカイブを自動的にYouTube
 ## 必要な環境
 
 - Python 3.7以上
-- yt-dlp（動画ダウンロード・情報取得用）- pipでインストール
-- pytz（タイムゾーン処理用）- pipでインストール
 
 ## セットアップ
 
@@ -55,21 +53,21 @@ venv\Scripts\activate     # Windows
    - 「認証情報を作成」→「OAuth 2.0クライアントID」
    - アプリケーションの種類：「デスクトップアプリケーション」
    - 名前：任意（例：「Twitch VOD Uploader」）
-5. **client_secret.json**をダウンロードしてプロジェクトルートに配置
+5. **client_secret.json**をダウンロードして`config`フォルダに配置
 
 ### 4. .envファイルの設定
 
-`.env.example`を参考に`.env`ファイルを作成して以下の設定を追加：
+`env/.env.sample`を参考に`env/.env`ファイルを作成してください：
 
 ```bash
 # テンプレートをコピー
-cp .env.example .env
+cp env/.env.sample env/.env
 
-# .envファイルを編集
-nano .env
+# env/.envファイルを編集
+nano env/.env
 ```
 
-`.env`ファイルの内容例：
+`env/.env`ファイルの内容例：
 
 ```env
 # Twitch API設定
@@ -90,25 +88,20 @@ MAX_VIDEO_LENGTH=43200  # 12時間（YouTubeの制限）
 
 ### 設定確認
 ```bash
-# 設定確認スクリプト（推奨）
-./check_config.sh
-
-# または直接実行
-python check_config.py
+# 設定確認スクリプト
+bash sh/check_config.sh
 ```
 
 ### 前日の動画をアップロード
 ```bash
-# 直接実行
-python main.py
-
-# またはシェルスクリプト経由（推奨）
-bash run_upload.sh
+# シェルスクリプト経由
+bash sh/run_upload.sh
 ```
 
 ### 手動で指定した日数前の動画をアップロード
 ```bash
-python main.py --manual 2  # 2日前の動画
+# シェルスクリプト経由で手動実行
+bash sh/run_upload.sh --manual 2  # 2日前の動画
 ```
 
 ### スケジュール実行（cron使用）
@@ -117,32 +110,36 @@ python main.py --manual 2  # 2日前の動画
 crontab -e
 
 # 毎日午前9時に実行する設定例
-0 9 * * * /path/to/twitch-vods-to-youtube/run_upload.sh
+0 9 * * * /path/to/twitch-vods-to-youtube/sh/run_upload.sh
 ```
-
-詳細な設定方法は `cron_setup.md` を参照してください。
 
 ## ファイル構成
 
 ```
 twitch-vods-to-youtube/
-├── main.py              # メインスクリプト
-├── config.py            # 設定管理
-├── twitch_api.py        # Twitch API処理
-├── youtube_api.py       # YouTube API処理
-├── video_downloader.py  # 動画ダウンロード処理
-├── upload_manager.py    # アップロード管理
-├── run_upload.sh        # cron実行用シェルスクリプト
-├── check_config.sh      # 設定確認用シェルスクリプト
-├── cron_setup.md        # cron設定ガイド
-├── check_config.py      # 設定確認ツール
-├── .env.example         # .envファイルのテンプレート
+├── app/                 # Pythonアプリケーションディレクトリ
+│   ├── main.py          # メインスクリプト
+│   ├── config.py        # 設定管理
+│   ├── twitch_api.py    # Twitch API処理
+│   ├── youtube_api.py   # YouTube API処理
+│   ├── video_downloader.py # 動画ダウンロード処理
+│   ├── upload_manager.py # アップロード管理
+│   └── check_config.py  # 設定確認ツール
+├── sh/                  # シェルスクリプトディレクトリ
+│   ├── run_upload.sh    # cron実行用シェルスクリプト
+│   └── check_config.sh  # 設定確認用シェルスクリプト
+├── env/                 # 環境設定ディレクトリ
+│   ├── .env.sample     # .envファイルのテンプレート
+│   └── .env            # API設定ファイル（要作成）
 ├── requirements.txt     # 依存関係
 ├── README.md           # このファイル
-├── .env                # API設定ファイル（要作成）
-├── client_secret.json # YouTube API認証ファイル（要配置）
-├── downloads/          # ダウンロードディレクトリ（自動作成）
-└── logs/               # 実行ログディレクトリ（自動作成）
+
+├── config/            # 設定ファイルディレクトリ
+│   └── client_secret.json # YouTube API認証ファイル（要作成）
+├── pickle/            # 認証トークンディレクトリ
+│   └── token.pickle  # YouTube API認証トークン（自動作成）
+├── downloads/          # ダウンロードディレクトリ
+└── logs/               # 実行ログディレクトリ
 ```
 
 ## 設定項目
@@ -223,6 +220,15 @@ twitch-vods-to-youtube/
 2. 初回実行時にブラウザで認証を完了する
 3. 複数のチャンネルがある場合は、アップロード先のチャンネルを選択する
 4. 認証エラーが続く場合は、`token.pickle`を削除して再認証する
+
+## 免責事項
+
+**重要**: このコードはAI生成で作成されています。何かしら問題が発生した場合でも、作者は責任を負いかねます。
+
+- このソフトウェアは「現状のまま」提供され、明示的または暗黙的な保証は一切ありません
+- 作者は、このソフトウェアの使用または使用不能によって生じるいかなる損害についても責任を負いません
+- このソフトウェアを使用する前に、必ずバックアップを取得し、テスト環境で十分に検証してください
+- 本ソフトウェアの使用は、ユーザーの自己責任で行ってください
 
 ## ライセンス
 

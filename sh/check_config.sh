@@ -7,13 +7,13 @@ echo "=================================================="
 echo "Twitch/YouTube設定確認スクリプト"
 echo "=================================================="
 
-# スクリプトのディレクトリに移動
-cd "$(dirname "$0")"
+# プロジェクトルートディレクトリに移動
+cd "$(dirname "$0")/.."
 
 # .envファイルの存在確認
-if [ ! -f ".env" ]; then
-    echo "❌ .envファイルが見つかりません"
-    echo ".env.exampleを参考に.envファイルを作成してください"
+if [ ! -f "env/.env" ]; then
+    echo "❌ env/.envファイルが見つかりません"
+    echo "env/.envファイルを作成してください"
     exit 1
 fi
 
@@ -36,8 +36,9 @@ if ! python -c "import requests, google.auth, yt_dlp, pytz" 2>/dev/null; then
     exit 1
 fi
 
-# check_config.pyを実行
+# appディレクトリに移動してcheck_config.pyを実行
 echo "設定確認を開始します..."
+cd app
 python check_config.py
 
 # 終了コードを取得
