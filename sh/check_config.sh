@@ -39,7 +39,7 @@ fi
 # appディレクトリに移動してcheck_config.pyを実行
 echo "設定確認を開始します..."
 cd app
-python check_config.py
+python check_config.py "$@"
 
 # 終了コードを取得
 exit_code=$?

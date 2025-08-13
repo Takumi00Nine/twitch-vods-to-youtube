@@ -18,10 +18,9 @@ class Config:
     TWITCH_CLIENT_ID = os.getenv('TWITCH_CLIENT_ID')
     TWITCH_CLIENT_SECRET = os.getenv('TWITCH_CLIENT_SECRET')
     TWITCH_CHANNEL_NAME = os.getenv('TWITCH_CHANNEL_NAME')
-    channel_name = os.getenv("TWITCH_CHANNEL_NAME", "")
     TWITCH_CHANNEL_URL = os.getenv(
         'TWITCH_CHANNEL_URL',
-        f'https://www.twitch.tv/{channel_name}'
+        f'https://www.twitch.tv/{TWITCH_CHANNEL_NAME}'
     )
 
     # 作者設定

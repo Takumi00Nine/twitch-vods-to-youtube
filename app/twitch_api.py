@@ -1,6 +1,5 @@
 import requests
-from datetime import datetime, timedelta
-import pytz
+import re
 from config import Config
 
 
@@ -91,22 +90,11 @@ class TwitchAPI:
             'Authorization': f'Bearer {self.access_token}'
         }
 
-        # 日本時間の前日の日付を計算
-        jst = pytz.timezone('Asia/Tokyo')
-        now_jst = datetime.now(jst)
-        yesterday_jst = now_jst - timedelta(days=days_back)
-        start_date = yesterday_jst.replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
-        end_date = yesterday_jst.replace(
-            hour=23, minute=59, second=59, microsecond=999999
-        )
-
         url = f"{self.base_url}/videos"
         params = {
             'user_id': channel_id,
             'type': 'archive',
-            'first': 100
+            'first': 100  # Twitch APIの最大値
         }
 
         try:
@@ -115,25 +103,7 @@ class TwitchAPI:
             )
             if response.status_code == 200:
                 videos = response.json()['data']
-                print(f"APIから取得した動画数: {len(videos)}件")
-
-                # 前日の動画のみをフィルタリング（日本時間で比較）
-                filtered_videos = []
-                for video in videos:
-                    # Twitch APIから返される時間はUTCなので、日本時間に変換
-                    created_at_utc = datetime.fromisoformat(
-                        video['created_at'].replace('Z', '+00:00')
-                    )
-                    created_at_jst = created_at_utc.astimezone(jst)
-                    if start_date <= created_at_jst <= end_date:
-                        filtered_videos.append(video)
-                        print(
-                            f"対象日付の動画を発見: {video['title']} - "
-                            f"{created_at_jst.strftime('%Y年%m月%d日 %H:%M:%S')}"
-                        )
-
-                print(f"フィルタリング後の動画数: {len(filtered_videos)}件")
-                return filtered_videos
+                return videos
             elif response.status_code == 401:
                 print(
                     "Twitch API認証エラー: トークンが無効です。再取得を試行します。"
@@ -148,6 +118,17 @@ class TwitchAPI:
             print(f"Twitch API接続エラー: {str(e)}")
 
         return []
+
+    def parse_twitch_duration(self, duration_str):
+        """Twitchのduration文字列（例: '2h21m23s'）を秒に変換"""
+        pattern = r'((?P<hours>\d+)h)?((?P<minutes>\d+)m)?((?P<seconds>\d+)s)?'
+        match = re.match(pattern, duration_str)
+        if not match:
+            return 0
+        hours = int(match.group('hours') or 0)
+        minutes = int(match.group('minutes') or 0)
+        seconds = int(match.group('seconds') or 0)
+        return hours * 3600 + minutes * 60 + seconds
 
     def get_video_url(self, video_id):
         """動画のダウンロードURLを取得"""

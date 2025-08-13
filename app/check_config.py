@@ -5,6 +5,7 @@ Twitch設定とYouTube設定を確認するツール
 
 import os
 import sys
+import argparse
 from datetime import datetime
 import pytz
 
@@ -13,17 +14,34 @@ from twitch_api import TwitchAPI
 from youtube_api import YouTubeAPI
 
 
-def check_twitch_config():
+def parse_datetime_arg(datetime_str):
+    """日時文字列をdatetimeオブジェクトに変換"""
+    try:
+        # YYYY/MM/DD HH:MM:SS 形式
+        if '/' in datetime_str and ':' in datetime_str:
+            return datetime.strptime(datetime_str, '%Y/%m/%d %H:%M:%S')
+        # YYYY/MM/DD 形式
+        elif '/' in datetime_str and ':' not in datetime_str:
+            return datetime.strptime(datetime_str, '%Y/%m/%d')
+        else:
+            raise ValueError(f"無効な日時形式: {datetime_str}")
+    except ValueError as e:
+        raise argparse.ArgumentTypeError(f"日時形式エラー: {e}")
+
+
+def check_twitch_config(start_datetime=None, end_datetime=None):
     """Twitch設定を確認"""
 
     print("=== Twitch設定確認 ===")
 
     # 基本設定の確認
     print(
-        f"Client ID: {'✅ 設定済み' if Config.TWITCH_CLIENT_ID else '❌ 未設定'}"
+        f"Client ID: "
+        f"{'✅ 設定済み' if Config.TWITCH_CLIENT_ID else '❌ 未設定'}"
     )
     print(
-        f"Client Secret: {'✅ 設定済み' if Config.TWITCH_CLIENT_SECRET else '❌ 未設定'}"
+        f"Client Secret: "
+        f"{'✅ 設定済み' if Config.TWITCH_CLIENT_SECRET else '❌ 未設定'}"
     )
     print(
         f"Channel Name: {'✅ 設定済み' if Config.TWITCH_CHANNEL_NAME else '❌ 未設定'}"
@@ -69,49 +87,89 @@ def check_twitch_config():
         if videos is not None:
             print(f"✅ 動画取得成功: {len(videos)}件の動画を発見")
 
-            # デバッグ情報を追加
-            if len(videos) == 0:
-                print("\n--- デバッグ情報 ---")
-                print(f"対象チャンネル: {Config.TWITCH_CHANNEL_NAME}")
-                print(f"チャンネルID: {channel_id}")
-
-                # より広い範囲で動画を取得してみる
-                print("過去7日間の動画を確認中...")
-                all_videos = twitch_api.get_videos(days_back=7)
-                if all_videos:
-                    print(f"過去7日間で {len(all_videos)}件の動画を発見")
-                    for i, video in enumerate(all_videos[:5]):  # 最新5件を表示
-                        jst = pytz.timezone('Asia/Tokyo')
-                        created_at_utc = datetime.fromisoformat(
-                            video['created_at'].replace('Z', '+00:00')
-                        )
-                        created_at_jst = created_at_utc.astimezone(jst)
-                        print(
-                            f"  {i+1}. {video['title']} - "
-                            f"{created_at_jst.strftime('%Y年%m月%d日 %H:%M:%S')} "
-                            "(JST)"
-                        )
-                else:
-                    print("過去7日間でも動画が見つかりません")
-                    print("考えられる原因:")
-                    print("- チャンネル名が間違っている")
-                    print("- 配信アーカイブが保存されていない")
-                    print("- API権限が不足している")
-
-            # 最新の動画情報を表示
-            if videos:
-                latest_video = videos[0]
+            # 指定された日付範囲またはデフォルトで動画を取得
+            all_videos = []
+            if start_datetime and end_datetime:
+                # 指定された日付範囲で動画を取得
                 jst = pytz.timezone('Asia/Tokyo')
-                created_at_utc = datetime.fromisoformat(
-                    latest_video['created_at'].replace('Z', '+00:00')
-                )
-                created_at_jst = created_at_utc.astimezone(jst)
+                start_jst = jst.localize(start_datetime)
+                end_jst = jst.localize(end_datetime)
 
-                print(f"最新動画: {latest_video['title']}")
-                print(
-                    f"作成日時: {created_at_jst.strftime('%Y年%m月%d日 %H:%M:%S')} (JST)"
-                )
-                print(f"動画長: {latest_video['duration']}秒")
+                print(f"検索期間: {start_jst.strftime('%Y年%m月%d日 %H:%M:%S')} から {end_jst.strftime('%Y年%m月%d日 %H:%M:%S')}")
+
+                # すべての動画を取得してソート
+                all_raw_videos = []
+                for days_back in range(1, 31):  # 最大30日間
+                    videos = twitch_api.get_videos(days_back=days_back)
+                    if videos:
+                        for video in videos:
+                            # 重複チェック
+                            if not any(v['id'] == video['id'] for v in all_raw_videos):
+                                all_raw_videos.append(video)
+
+                # 作成日時でソート（新しい順）
+                all_raw_videos.sort(key=lambda x: x['created_at'], reverse=True)
+
+                # 指定された日付範囲内の動画のみを抽出
+                for video in all_raw_videos:
+                    created_at_utc = datetime.fromisoformat(
+                        video['created_at'].replace('Z', '+00:00')
+                    )
+                    created_at_jst = created_at_utc.astimezone(jst)
+
+                    # 指定された日付範囲内の動画のみを追加
+                    if start_jst <= created_at_jst <= end_jst:
+                        all_videos.append(video)
+                        print(f"期間内の動画を発見: {video['title']} - {created_at_jst.strftime('%Y年%m月%d日 %H:%M:%S')}")
+                    elif created_at_jst < start_jst:
+                        # 開始日より古い動画に到達したら終了
+                        break
+                
+                print(f"指定期間で {len(all_videos)}件の動画を発見")
+            else:
+                # デフォルト: 昨日分の動画を取得
+                videos = twitch_api.get_videos(days_back=1)
+                if videos:
+                    for video in videos:
+                        all_videos.append(video)
+                
+                print(f"昨日分で {len(all_videos)}件の動画を発見")
+            
+            if all_videos:
+                print("\n=== 動画一覧（最新10件） ===")
+                for i, video in enumerate(all_videos[:10]):  # 最新10件を表示
+                    jst = pytz.timezone('Asia/Tokyo')
+                    created_at_utc = datetime.fromisoformat(
+                        video['created_at'].replace('Z', '+00:00')
+                    )
+                    created_at_jst = created_at_utc.astimezone(jst)
+                    
+                    # 動画長を時間:分:秒形式に変換
+                    duration_seconds = twitch_api.parse_twitch_duration(video['duration'])
+                    hours = duration_seconds // 3600
+                    minutes = (duration_seconds % 3600) // 60
+                    seconds = duration_seconds % 60
+                    duration_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+                    
+                    print(f"\n【動画 {i+1}】")
+                    print(f"タイトル: {video['title']}")
+                    print(f"動画ID: {video['id']}")
+                    print(
+                        f"作成日時: "
+                        f"{created_at_jst.strftime('%Y年%m月%d日 %H:%M:%S')} (JST)"
+                    )
+                    print(f"動画長: {duration_str} ({duration_seconds}秒)")
+                    print(f"URL: https://www.twitch.tv/videos/{video['id']}")
+                    print(f"視聴回数: {video.get('view_count', 'N/A')}")
+                    print(f"言語: {video.get('language', 'N/A')}")
+            else:
+                print("昨日分でも動画が見つかりません")
+                print("考えられる原因:")
+                print("- チャンネル名が間違っている")
+                print("- 配信アーカイブが保存されていない")
+                print("- API権限が不足している")
+
+
         else:
             print("❌ 動画取得失敗")
             return False
@@ -164,7 +222,10 @@ def check_youtube_config():
 
             if channels_response['items']:
                 channel = channels_response['items'][0]
-                print(f"✅ チャンネル情報取得成功: {channel['snippet']['title']}")
+                print(
+                    f"✅ チャンネル情報取得成功: "
+                    f"{channel['snippet']['title']}"
+                )
                 print(f"チャンネルID: {channel['id']}")
             else:
                 print("❌ チャンネル情報取得失敗")
@@ -222,27 +283,36 @@ def check_environment():
         else:
             print(f"❌ {description}: {script_path} が見つかりません")
 
-    # 外部ツールの確認
-    print("\n--- 外部ツール確認 ---")
 
-    # yt-dlpのPythonライブラリ確認
-    try:
-        import yt_dlp  # noqa: F401
-        print("✅ 動画ダウンロード・情報取得: yt-dlp (Pythonライブラリ)")
-    except ImportError:
-        print("❌ 動画ダウンロード・情報取得: yt-dlp がインストールされていません")
 
 
 def main():
     """メイン関数"""
+    parser = argparse.ArgumentParser(
+        description='Twitch/YouTube設定確認ツール'
+    )
+    parser.add_argument(
+        '--range', nargs=2, metavar=('START_DATETIME', 'END_DATETIME'),
+        help='指定した日時範囲の動画を確認（例: --range "2024/12/01 00:00:00" "2024/12/07 23:59:59"）'
+    )
+
+    args = parser.parse_args()
+
     print("Twitch/YouTube設定確認ツール")
     print("=" * 50)
+
+    # 日付範囲を解析
+    start_datetime = None
+    end_datetime = None
+    if args.range:
+        start_datetime = parse_datetime_arg(args.range[0])
+        end_datetime = parse_datetime_arg(args.range[1])
 
     # 環境設定確認
     check_environment()
 
     # Twitch設定確認
-    twitch_ok = check_twitch_config()
+    twitch_ok = check_twitch_config(start_datetime, end_datetime)
 
     # YouTube設定確認
     youtube_ok = check_youtube_config()
